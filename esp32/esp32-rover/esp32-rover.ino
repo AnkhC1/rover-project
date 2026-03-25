@@ -15,17 +15,18 @@
 #include <LDS_RPLIDAR_C1.h>
 #include <WiFi.h>
 #include <SCServo.h>
+#include "secrets.h"
 
 #define SLAMTEC_RPLIDAR_C1
 
 #define MOTOR_DEBUG false
-#define TIMING_DEBUG false
+#define TIMING_DEBUG true
 
 // --- WiFi Configuration ---
-char ssid[] = "ankush-chanda";
-char password[] = "esp32robot";
-char agent_ip[] = "10.42.0.1";
-uint32_t agent_port = 8888;
+char ssid[]       = WIFI_SSID;
+char password[]   = WIFI_PASSWORD;
+char agent_ip[]   = AGENT_IP;
+uint32_t agent_port = AGENT_PORT;
 
 // --- Pin Configuration ---
 const uint8_t LIDAR_RX_PIN = 16;
@@ -300,23 +301,28 @@ void loop() {
   unsigned long t2 = micros();
 
   unsigned long now = millis();
-  static unsigned long last_time = 0;
+  static unsigned long last_scan_time = 0;
+  static unsigned long last_odom_time_loop = 0;
 
-  if (now - last_time >= 100) {
-    calculate_odometry();
+  if (scan_data_ready && (now - last_scan_time >= 100)) {
     publishLaserScan();
-    last_time = now;
+    last_scan_time = now;
+  }
+
+  if (now - last_odom_time_loop >= 100) {
+    calculate_odometry();
+    last_odom_time_loop = now;
   }
 
   unsigned long t3 = micros();
   rclc_executor_spin_some(&executor, 0);
   unsigned long t4 = micros();
 
-  static unsigned long last_report = 0;
   #if TIMING_DEBUG
+  static unsigned long last_report = 0;
   if (now - last_report >= 1000) {
     Serial.print("lidar.loop()="); Serial.print(t2-t1);
-    Serial.print("us  publish="); Serial.print(t3-t2);
+    Serial.print("us  publish+odom="); Serial.print(t3-t2);
     Serial.print("us  executor="); Serial.println(t4-t3);
     last_report = now;
   }
