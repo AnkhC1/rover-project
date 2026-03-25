@@ -1,0 +1,20 @@
+# ROS 2 generated folders — never commit these
+build/
+install/
+log/
+*.pyc
+__pycache__/
+
+# Arduino build artifacts
+*.elf
+*.bin
+*.hex
+*.map
+
+# IDE and system files
+.vscode/
+*.swp
+
+# Third-party ROS dependencies
+uros_ws/src/micro-ROS-Agent/
+uros_ws/src/micro_ros_setup/
