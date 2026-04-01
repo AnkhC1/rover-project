@@ -23,3 +23,6 @@ slam_toolbox:
 
     use_scan_matching: true
     use_scan_barycenter: true
+    
+    transform_timeout: 0.5
+    tf_buffer_duration: 30.0	
