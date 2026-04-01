@@ -20,7 +20,7 @@
 #define SLAMTEC_RPLIDAR_C1
 
 #define MOTOR_DEBUG false
-#define TIMING_DEBUG true
+#define TIMING_DEBUG false
 
 // --- WiFi Configuration ---
 char ssid[]       = WIFI_SSID;
@@ -303,6 +303,12 @@ void loop() {
   unsigned long now = millis();
   static unsigned long last_scan_time = 0;
   static unsigned long last_odom_time_loop = 0;
+
+  static unsigned long last_sync = 0;
+  if (now - last_sync >= 10000) {  // resync every 10 seconds
+  rmw_uros_sync_session(200);
+  last_sync = now;
+} 
 
   if (scan_data_ready && (now - last_scan_time >= 100)) {
     publishLaserScan();
