@@ -9,34 +9,10 @@ bt_navigator:
       plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
     navigate_through_poses:
       plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
-    plugin_lib_names:
-      - nav2_compute_path_to_pose_action_bt_node
-      - nav2_compute_path_through_poses_action_bt_node
-      - nav2_smooth_path_action_bt_node
-      - nav2_follow_path_action_bt_node
-      - nav2_spin_action_bt_node
-      - nav2_wait_action_bt_node
-      - nav2_back_up_action_bt_node
-      - nav2_drive_on_heading_bt_node
-      - nav2_clear_costmap_service_bt_node
-      - nav2_is_stuck_condition_bt_node
-      - nav2_goal_reached_condition_bt_node
-      - nav2_goal_updated_condition_bt_node
-      - nav2_is_path_valid_condition_bt_node
-      - nav2_initial_pose_received_condition_bt_node
-      - nav2_reinitialize_global_localization_service_bt_node
-      - nav2_rate_progress_condition_bt_node
-      - nav2_distance_traveled_condition_bt_node
-      - nav2_time_expired_condition_bt_node
-      - nav2_speed_limit_condition_bt_node
-      - nav2_cancel_control_bt_node
-      - nav2_cancel_back_up_bt_node
-      - nav2_cancel_spin_bt_node
-      - nav2_cancel_wait_bt_node
-      - nav2_cancel_drive_on_heading_bt_node
 
 controller_server:
   ros__parameters:
+    enable_stamped_cmd_vel: false
     controller_frequency: 10.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.5
@@ -115,6 +91,52 @@ controller_server:
         cost_power: 1
         cost_weight: 5.0
         threshold_to_consider: 0.4
+
+smoother_server:
+  ros__parameters:
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: true
+
+velocity_smoother:
+  ros__parameters:
+    enable_stamped_cmd_vel: false
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.3, 0.0, 1.0]
+    min_velocity: [-0.3, 0.0, -1.0]
+    max_accel: [2.5, 0.0, 3.2]
+    max_decel: [-2.5, 0.0, -3.2]
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0
+
+behavior_server:
+  ros__parameters:
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors::DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    global_frame: odom
+    robot_base_frame: base_link
+    transform_tolerance: 0.5
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.2
 
 local_costmap:
   local_costmap:
@@ -201,6 +223,7 @@ collision_monitor:
     odom_frame_id: "odom"
     cmd_vel_in_topic: "cmd_vel_smoothed"
     cmd_vel_out_topic: "cmd_vel"
+    enable_stamped_cmd_vel: false
     transform_tolerance: 0.5
     source_timeout: 2.0
     stop_pub_timeout: 2.0
@@ -208,7 +231,7 @@ collision_monitor:
     FootprintApproach:
       type: "polygon"
       action_type: "slowdown"
-      footprint_topic: "local_costmap/published_footprint"
+      polygon_sub_topic: "local_costmap/published_footprint"
       time_before_collision: 1.2
       simulation_time_step: 0.1
       min_points: 6
