@@ -41,13 +41,13 @@ SMS_STS sts;
 // --- ODOMETRY VARIABLES ---
 #define LEFT_MOTOR_ID 1
 #define RIGHT_MOTOR_ID 2
-const float TRACK_WIDTH = 0.18;         
+const float TRACK_WIDTH = 0.1875;         
 const float WHEEL_RADIUS = 0.033;       
 const float STEPS_PER_REV = 4096.0;    
 
 const float METERS_PER_TICK = (2.0 * PI * WHEEL_RADIUS) / 4096.0;
 
-int16_t last_left_ticks = 0;
+int16_t last_left_ticks = 0; 
 int16_t last_right_ticks = 0;
 bool first_odom_reading = true;
 unsigned long last_odom_time = 0;
@@ -112,7 +112,7 @@ void calculate_odometry() {
   float d_right = delta_right_ticks * METERS_PER_TICK;
 
   float d_center = (d_left + d_right) / 2.0;
-  float delta_theta = (d_right - d_left) / TRACK_WIDTH;
+  float delta_theta = (d_left - d_right) / TRACK_WIDTH;
 
   robot_x += d_center * cos(robot_theta);
   robot_y += d_center * sin(robot_theta);
@@ -305,7 +305,7 @@ void loop() {
   static unsigned long last_odom_time_loop = 0;
 
   static unsigned long last_sync = 0;
-  if (now - last_sync >= 10000) {  // resync every 10 seconds
+  if (now - last_sync >= 2000) {  // resync every 10 seconds
   rmw_uros_sync_session(200);
   last_sync = now;
 } 
