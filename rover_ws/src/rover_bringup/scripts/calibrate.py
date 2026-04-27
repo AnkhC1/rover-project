@@ -10,18 +10,15 @@ class MoveNode(Node):
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
     def move(self, linear_speed, angular_speed, duration):
-        msg = Twist()
-        msg.linear.x = linear_speed
-        msg.angular.z = angular_speed
-        end = time.time() + duration
-        while time.time() < end:
-            self.pub.publish(msg)
-            time.sleep(0.1)  # 10 Hz, no rate object needed
-        stop = Twist()
-        self.pub.publish(stop)
-
-    def move_distance(self, distance, speed=0.15):
-        self.move(speed, 0.0, distance / speed)
+     msg = Twist()
+     msg.linear.x = linear_speed
+     msg.angular.z = angular_speed
+     self.pub.publish(msg)  # send once
+     time.sleep(duration)   # wait
+     self.pub.publish(Twist())  # stop
+     
+    def move_distance(self, distance, speed=0.5):
+           self.move(speed, 0.0, distance / speed)
 
     def spin_angle(self, degrees, speed=0.5):
         radians = math.radians(degrees)

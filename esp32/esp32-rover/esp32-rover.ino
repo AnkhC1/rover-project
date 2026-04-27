@@ -19,7 +19,7 @@
 
 #define SLAMTEC_RPLIDAR_C1
 
-#define MOTOR_DEBUG false
+#define DEBUG_MOTORS false
 #define TIMING_DEBUG false
 
 // --- WiFi Configuration ---
@@ -41,6 +41,8 @@ SMS_STS sts;
 // --- ODOMETRY VARIABLES ---
 #define LEFT_MOTOR_ID 1
 #define RIGHT_MOTOR_ID 2
+#define LEFT_SPEED_CORRECTION 1.00f
+#define RIGHT_SPEED_CORRECTION 1.00f
 const float TRACK_WIDTH = 0.1875;         
 const float WHEEL_RADIUS = 0.033;       
 const float STEPS_PER_REV = 4096.0;    
@@ -137,9 +139,9 @@ void calculate_odometry() {
   odom_msg.pose.pose.orientation.z = sin(robot_theta / 2.0);
   odom_msg.pose.pose.orientation.w = cos(robot_theta / 2.0);
 
-  odom_msg.pose.covariance[0]  = 0.001;  // x
-  odom_msg.pose.covariance[7]  = 0.001;  // y
-  odom_msg.pose.covariance[35] = 0.001;  // yaw
+  odom_msg.pose.covariance[0]  = 0.03;  // x
+  odom_msg.pose.covariance[7]  = 0.03;  // y
+  odom_msg.pose.covariance[35] = 0.06;  // yaw
 
   odom_msg.twist.twist.linear.x = linear_velocity;
   odom_msg.twist.twist.linear.y = 0.0;
@@ -168,21 +170,23 @@ void twist_callback(const void * msgin) {
   float circumference = 2.0 * PI * WHEEL_RADIUS;
   float steps_per_meter = STEPS_PER_REV / circumference;
   
-  int left_speed_steps = (int)(v_left * steps_per_meter);
-  int right_speed_steps = (int)(v_right * steps_per_meter);
+  int left_speed_steps = (int)(v_left * steps_per_meter * LEFT_SPEED_CORRECTION);
+  int right_speed_steps = (int)(v_right * steps_per_meter* RIGHT_SPEED_CORRECTION);
+
+  #if DEBUG_MOTORS
+  Serial.printf("raw left:%d corrected left: %d\n",
+  (int)(v_left * steps_per_meter),
+  (int)(v_left * steps_per_meter * LEFT_SPEED_CORRECTION));
+  #endif
   
   left_speed_steps = -left_speed_steps;
   left_speed_steps = constrain(left_speed_steps, -3400, 3400);
   right_speed_steps = constrain(right_speed_steps, -3400, 3400);
 
-  int left_final = abs(left_speed_steps);
-  if (left_speed_steps < 0) left_final |= (1 << 15);
+  sts.WriteSpe(LEFT_MOTOR_ID, (s16)left_speed_steps, 50);
+  sts.WriteSpe(RIGHT_MOTOR_ID, (s16)right_speed_steps, 50);
 
-  int right_final = abs(right_speed_steps);
-  if (right_speed_steps < 0) right_final |= (1 << 15);
 
-  sts.WriteSpe(LEFT_MOTOR_ID, left_final, 50);
-  sts.WriteSpe(RIGHT_MOTOR_ID, right_final, 50); 
 }
 
 void lidar_scan_point_callback(float angle_deg, float distance_mm, float quality, bool scan_completed) {
@@ -223,6 +227,7 @@ void lidar_packet_callback(uint8_t * packet, uint16_t length, bool scan_complete
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("SPEED CORRECTION ACTIVE");
   delay(2000); 
 
   // --- 1. Init Servos ---
@@ -305,12 +310,12 @@ void loop() {
   static unsigned long last_odom_time_loop = 0;
 
   static unsigned long last_sync = 0;
-  if (now - last_sync >= 2000) {  // resync every 10 seconds
+  if (now - last_sync >= 500) {  // resync every half second
   rmw_uros_sync_session(200);
   last_sync = now;
 } 
 
-  if (scan_data_ready && (now - last_scan_time >= 100)) {
+  if (scan_data_ready && (now - last_scan_time >= 200)) {
     publishLaserScan();
     last_scan_time = now;
   }
