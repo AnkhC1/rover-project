@@ -45,27 +45,27 @@ graph LR
 Four problems that best represent the actual debugging work on this project — root cause, fix, and reasoning for each.
 
 ### 1. Controller loop silently running at 2 Hz instead of 10 Hz
-**Symptom:** Navigation was sluggish and oscillated near goals — the robot consistently overshot turns before correcting.
-**Diagnosis:** Traced the full `cmd_vel` pipeline with `ros2 topic hz` at each hop (`controller_server → cmd_vel_nav → velocity_smoother → cmd_vel_smoothed → collision_monitor → cmd_vel`) and found messages dying between two nodes.
-**Root cause:** ROS 2 Kilted defaults `behavior_server` to `TwistStamped`, while the ESP32 firmware subscribed to plain `Twist`. Both message types were present on the same topic; ROS 2 subscribers reject mismatched types silently — no error, no warning, just missing messages.
-**Fix:** Set `enable_stamped_cmd_vel: false` across all velocity-publishing nodes to force a consistent type through the entire chain.
+- **Symptom:** Navigation was sluggish and oscillated near goals — the robot consistently overshot turns before correcting.
+- **Diagnosis:** Traced the full `cmd_vel` pipeline with `ros2 topic hz` at each hop (`controller_server → cmd_vel_nav → velocity_smoother → cmd_vel_smoothed → collision_monitor → cmd_vel`) and found messages dying between two nodes.
+- **Root cause:** ROS 2 Kilted defaults `behavior_server` to `TwistStamped`, while the ESP32 firmware subscribed to plain `Twist`. Both message types were present on the same topic; ROS 2 subscribers reject mismatched types silently — no error, no warning, just missing messages.
+- **Fix:** Set `enable_stamped_cmd_vel: false` across all velocity-publishing nodes to force a consistent type through the entire chain.
 
 ### 2. Asymmetric wheel speeds from a firmware-level bug
-**Symptom:** The rover drifted during commands that should have driven it straight.
-**Diagnosis:** Isolated the fault to the motor driver layer rather than kinematics or odometry by commanding raw wheel speeds directly and observing the asymmetry persist.
-**Root cause:** The Feetech STS servo library's `WriteSpe()` expects a signed 16-bit integer for direction encoding. An earlier implementation manually manipulated the sign bit instead, corrupting speed commands in a way that only showed up as inconsistent — not obviously wrong — motion.
-**Fix:** Replaced manual bit manipulation with correct signed-integer calls.
+- **Symptom:** The rover drifted during commands that should have driven it straight.
+- **Diagnosis:** Isolated the fault to the motor driver layer rather than kinematics or odometry by commanding raw wheel speeds directly and observing the asymmetry persist.
+- **Root cause:** The Feetech STS servo library's `WriteSpe()` expects a signed 16-bit integer for direction encoding. An earlier implementation manually manipulated the sign bit instead, corrupting speed commands in a way that only showed up as inconsistent — not obviously wrong — motion.
+- **Fix:** Replaced manual bit manipulation with correct signed-integer calls.
 
 ### 3. Stale transforms from ESP32↔host clock drift (up to 592ms)
-**Symptom:** Intermittent `TF extrapolation error` and Nav2's error 102 ("unable to transform goal into costmap frame"), especially during in-place rotation.
-**Diagnosis:** An embedded microcontroller with no OS and no NTP-equivalent drifts against the host clock. That drift invalidated timestamps used by SLAM and TF lookups.
-**Fix:** Increased `transform_tolerance` to 1.0s across every Nav2 component *and* every costmap (they perform independent TF lookups with their own default tolerances), and increased ESP32 clock re-sync frequency via `rmw_uros_sync_session()`. Both were necessary — tolerance absorbs transient drift, faster sync prevents accumulation.
+- **Symptom:** Intermittent `TF extrapolation error` and Nav2's error 102 ("unable to transform goal into costmap frame"), especially during in-place rotation.
+- **Diagnosis:** An embedded microcontroller with no OS and no NTP-equivalent drifts against the host clock. That drift invalidated timestamps used by SLAM and TF lookups.
+- **Fix:** Increased `transform_tolerance` to 1.0s across every Nav2 component *and* every costmap (they perform independent TF lookups with their own default tolerances), and increased ESP32 clock re-sync frequency via `rmw_uros_sync_session()`. Both were necessary — tolerance absorbs transient drift, faster sync prevents accumulation.
 
 ### 4. Effective track width diverging from physical measurement
-**Symptom:** Odometry-based heading was consistently wrong despite correct physical wheel spacing.
-**Diagnosis:** Commanded a 1080° (3-rotation) spin-in-place test and measured actual angle turned, isolating pure kinematic error from lag-induced error (a single-rotation test conflates the two).
-**Root cause:** Wheel slip during in-place rotation on hard flooring means the *effective* kinematic track width is larger than the physically measured wheel-to-wheel distance — expected behavior for differential drive, but only quantifiable empirically.
-**Fix:** Scaled `TRACK_WIDTH` proportionally (`new = old × actual_angle / commanded_angle`) from 0.18m to 0.1875m, confirmed by re-running the test.
+- **Symptom:** Odometry-based heading was consistently wrong despite correct physical wheel spacing.
+- **Diagnosis:** Commanded a 1080° (3-rotation) spin-in-place test and measured actual angle turned, isolating pure kinematic error from lag-induced error (a single-rotation test conflates the two).
+- **Root cause:** Wheel slip during in-place rotation on hard flooring means the *effective* kinematic track width is larger than the physically measured wheel-to-wheel distance — expected behavior for differential drive, but only quantifiable empirically.
+- **Fix:** Scaled `TRACK_WIDTH` proportionally (`new = old × actual_angle / commanded_angle`) from 0.18m to 0.1875m, confirmed by re-running the test.
 
 *A full issue-and-resolution log covering 15+ additional bugs across odometry, SLAM Toolbox tuning, and Nav2 parameter configuration is in [`/docs/postmortem.pdf`](./docs/postmortem.pdf).*
 
