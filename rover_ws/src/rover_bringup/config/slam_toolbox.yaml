@@ -11,20 +11,21 @@ slam_toolbox:
     base_frame: base_link
     scan_topic: /scan
     mode: mapping
+    use_lifecycle_manager: false
 
     map_update_interval: 5.0
     resolution: 0.05
     max_laser_range: 12.0
-    minimum_travel_distance: 0.1
-    minimum_travel_heading: 0.3
-    minimum_time_interval: 0.2
+    minimum_travel_distance: 0.05
+    minimum_travel_heading: 0.1
+    minimum_time_interval: 0.1
 
-    do_loop_closing: true
+    do_loop_closing: false
     loop_search_maximum_distance: 3.0
-    loop_match_minimum_response_fine: 0.45
+    loop_match_minimum_response_fine: 0.35
 
     use_scan_matching: true
     use_scan_barycenter: true
     
     transform_timeout: 1.0
-    tf_buffer_duration: 30.0	
+    tf_buffer_duration: 60.0	

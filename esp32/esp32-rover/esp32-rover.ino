@@ -20,7 +20,7 @@
 #define SLAMTEC_RPLIDAR_C1
 
 #define DEBUG_MOTORS false
-#define TIMING_DEBUG false
+#define TIMING_DEBUG true
 
 // --- WiFi Configuration ---
 char ssid[]       = WIFI_SSID;
@@ -205,7 +205,6 @@ void lidar_scan_point_callback(float angle_deg, float distance_mm, float quality
 }
 
 void publishLaserScan() {
-  scan_data_ready = false;
   int64_t time_ns = rmw_uros_epoch_nanos();
   laser_scan_msg.header.stamp.sec = (int32_t)(time_ns / 1000000000);
   laser_scan_msg.header.stamp.nanosec = (uint32_t)(time_ns % 1000000000);
@@ -213,7 +212,7 @@ void publishLaserScan() {
   for(int i = 0; i < SCAN_SIZE; i++) {
     laser_scan_msg.ranges.data[i] = scan_ranges[i];
   }
-  
+  scan_data_ready = false;
   rcl_publish(&scan_pub, &laser_scan_msg, NULL);
 
   for(int i = 0; i < SCAN_SIZE; i++) {
@@ -245,6 +244,7 @@ void setup() {
   // --- 2. Init WiFi ---
   set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
   while(WiFi.status() != WL_CONNECTED) { delay(500); }
+  WiFi.setSleep(false);
 
   // --- 3. Init micro-ROS ---
   allocator = rcl_get_default_allocator();
@@ -311,19 +311,24 @@ void loop() {
 
   static unsigned long last_sync = 0;
   if (now - last_sync >= 500) {  // resync every half second
-  rmw_uros_sync_session(200);
+  rmw_uros_sync_session(50);
   last_sync = now;
 } 
 
-  if (scan_data_ready && (now - last_scan_time >= 200)) {
+unsigned long tp1 = micros();
+if (scan_data_ready && (now - last_scan_time >= 200)) {
     publishLaserScan();
     last_scan_time = now;
-  }
+}
+unsigned long tp2 = micros();
 
-  if (now - last_odom_time_loop >= 100) {
+if (now - last_odom_time_loop >= 100) {
     calculate_odometry();
     last_odom_time_loop = now;
-  }
+}
+unsigned long tp3 = micros();
+
+Serial.printf("scan_pub=%luus odom_pub=%luus\n", tp2-tp1, tp3-tp2);
 
   unsigned long t3 = micros();
   rclc_executor_spin_some(&executor, 0);

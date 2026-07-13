@@ -22,7 +22,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='tf_base_to_laser',
-        arguments=['--x', '0', '--y', '0', '--z', '0.1',
+        arguments=['--x', '0', '--y', '0', '--z', '0.14',
                    '--roll', '0', '--pitch', '0', '--yaw', '0',
                    '--frame-id', 'base_link',
                    '--child-frame-id', 'laser_frame']
@@ -157,7 +157,7 @@ def generate_launch_description():
         output='screen',
         parameters=[nav2_params],
         remappings=[('cmd_vel', 'cmd_vel_nav'),
-                    ('cmd_vel_smoothed', 'cmd_vel')]
+                    ('cmd_vel_smoothed', 'cmd_vel_smoothed')]
     )
 
     collision_monitor = LifecycleNode(
