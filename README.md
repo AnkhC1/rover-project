@@ -4,17 +4,17 @@
 
 `ESP32` `micro-ROS` `ROS 2 Kilted` `SLAM Toolbox` `Nav2 / MPPI` `C++` `Python`
 
-[Demo video](https://youtube.com/shorts/VPZTrOBSdS8?feature=share) · [Chassis CAD (Onshape)](https://cad.onshape.com/documents/83125d1df7da4e076211cfb5/w/6ad0806186d95563e5e967b6/e/4eaaa43f1ce4cf23ad352b7c)
+[Demo video](https://youtube.com/shorts/VPZTrOBSdS8?feature=share) — shows the rover failing to navigate around an obstacle due to dropped scans and timestamp mismatch; see Known Limitations below · [Chassis CAD (Onshape)](https://cad.onshape.com/documents/83125d1df7da4e076211cfb5/w/6ad0806186d95563e5e967b6/e/4eaaa43f1ce4cf23ad352b7c)
 
 ---
 
 ## Overview
 
-This rover maps and navigates unknown indoor environments in real time using 2D LiDAR SLAM. The embedded platform is heavily constrained: an ESP32 microcontroller — no OS, WiFi-only, limited compute — bridged to a full ROS 2 navigation stack over `micro-ROS`. A Raspberry Pi would have sidestepped most of the hardest problems in this project; the ESP32 forced real engineering around clock synchronization, wireless message loss, and firmware-level motor control that a more capable board would have hidden.
+This rover maps unknown indoor environments in real time using 2D LiDAR SLAM, with a Nav2/MPPI autonomous navigation stack layered on top. The embedded platform is heavily constrained: an ESP32 microcontroller — no OS, WiFi-only, limited compute — bridged to a full ROS 2 navigation stack over `micro-ROS`. A Raspberry Pi would have sidestepped most of the hardest problems in this project; the ESP32 forced real engineering around clock synchronization, wireless message loss, and firmware-level motor control that a more capable board would have hidden.
 
 The chassis was independently designed to mate with [SnappyXO](https://snappyxo.com/) — a modular hardware kit of laser-cut Delrin beams, plates, and connectors developed at Stony Brook University to teach the engineering design process — so the rover's structure builds directly from those components rather than one-off custom parts.
 
-The system achieved **stable real-time SLAM** (10 Hz on both `/scan` and `/odom`, σ ≈ 0.05 Hz), reliable obstacle avoidance, and autonomous goal navigation — after resolving a chain of failures that spanned firmware, transforms, and navigation-stack configuration. That debugging process is the actual substance of this project, and it's documented below.
+**SLAM mapping is solid** (10 Hz on both `/scan` and `/odom`, σ ≈ 0.05 Hz, coherent occupancy grids). **Autonomous navigation is implemented but not yet validated** — every navigation test to date has run concurrently with live SLAM rather than against a completed, static map, which conflates two separate failure domains and makes root-causing harder. That gap, and the debugging work that led to finding it, is documented below.
 
 ## System Architecture
 
@@ -71,19 +71,20 @@ Four problems that best represent the actual debugging work on this project — 
 
 *A full issue-and-resolution log covering 15+ additional bugs across odometry, SLAM Toolbox tuning, and Nav2 parameter configuration is in [`/docs/postmortem.pdf`](./docs/postmortem.pdf).*
 
-## Results
+## Current Status & Known Limitations
 
-| Metric | Result |
+| Component | Status |
 |---|---|
-| `/scan`, `/odom` publish rate | 10 Hz stable (σ ≈ 0.05 Hz) |
-| Odometry | Empirically calibrated, EKF-fused via `robot_localization` |
-| Mapping | Coherent occupancy grids via SLAM Toolbox during teleop and autonomous nav |
-| Navigation | Collision-free MPPI trajectories; autonomous goal-reaching functional but sensitive to clock drift during extended runs |
+| SLAM Mapping | Stable — 10 Hz publish rate on `/scan` and `/odom` (σ ≈ 0.05 Hz), coherent occupancy grids |
+| Odometry / EKF | Empirically calibrated, fused via `robot_localization`, stable under teleop |
+| Autonomous Navigation | Nav2/MPPI stack implemented and issuing collision-free local trajectories in isolated tests — **not yet validated end-to-end** |
+
+**Known limitation:** every autonomous navigation test so far has run concurrently with live SLAM, rather than against a completed, static map. Running both at once contends for the ESP32's limited compute and worsens clock drift between scans, which conflates two distinct failure domains — mapping/localization error vs. navigation-stack timing — and makes it hard to tell which one caused a given failure. The linked demo video shows the result: the rover fails to navigate around an obstacle due to dropped scans and a timestamp mismatch. Isolating these two phases (build a map first, localize against it, *then* run navigation) is the top item under Future Work below.
 
 ## Repository Structure
 
 - `main` — mapping-only functionality
-- `nav2-integration` — full autonomous navigation stack as described above
+- `nav2-integration` — Nav2/MPPI navigation stack integrated on top of live SLAM (see Known Limitations above)
 
 ## Hardware
 
@@ -96,9 +97,9 @@ Four problems that best represent the actual debugging work on this project — 
 
 ## Future Work
 
-- Migrate to Raspberry Pi 4 to eliminate the WiFi/clock-drift problem class entirely and free compute headroom for SLAM + Nav2 + MPPI running concurrently
+- Validate navigation against a completed, static map (build map → localize-only → navigate) instead of running concurrently with live SLAM, to isolate localization drift from navigation-stack timing issues
+- Migrate to Raspberry Pi 4 to eliminate the WiFi/clock-drift problem class entirely and free compute headroom for SLAM + Nav2 + MPPI running concurrently, if concurrent operation is still needed
 - IMU fusion into the EKF to reduce rotational odometry error from wheel slip
-- Separate mapping and localization phases for more predictable production-style navigation
 - Direct quadrature encoder feedback in place of servo absolute-position polling
 
 ## Setup
