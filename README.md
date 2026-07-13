@@ -10,9 +10,11 @@
 
 ## Overview
 
-This rover maps and navigates unknown indoor environments in real time using 2D LiDAR SLAM. The embedded platform is deliberately constrained: an ESP32 microcontroller — no OS, WiFi-only, limited compute — bridged to a full ROS 2 navigation stack over `micro-ROS`. That constraint was the point. A Raspberry Pi would have made this easier and less interesting; the ESP32 forced real engineering around clock synchronization, wireless message loss, and firmware-level motor control that a more capable board would have hidden.
+This rover maps and navigates unknown indoor environments in real time using 2D LiDAR SLAM. The embedded platform is heavily constrained: an ESP32 microcontroller — no OS, WiFi-only, limited compute — bridged to a full ROS 2 navigation stack over `micro-ROS`. A Raspberry Pi would have sidestepped most of the hardest problems in this project; the ESP32 forced real engineering around clock synchronization, wireless message loss, and firmware-level motor control that a more capable board would have hidden.
 
-The system achieved **stable real-time SLAM** (10 Hz on both `/scan` and `/odom`, σ ≈ 0.05 Hz), reliable short-term obstacle avoidance, and autonomous goal navigation — after resolving a chain of failures that spanned firmware, transforms, and navigation-stack configuration. That debugging process is the actual substance of this project, and it's documented below.
+The chassis was independently designed to mate with [SnappyXO](https://snappyxo.com/) — a modular hardware kit of laser-cut Delrin beams, plates, and connectors developed at Stony Brook University to teach the engineering design process — so the rover's structure builds directly from those components rather than one-off custom parts.
+
+The system achieved **stable real-time SLAM** (10 Hz on both `/scan` and `/odom`, σ ≈ 0.05 Hz), reliable obstacle avoidance, and autonomous goal navigation — after resolving a chain of failures that spanned firmware, transforms, and navigation-stack configuration. That debugging process is the actual substance of this project, and it's documented below.
 
 ## System Architecture
 
